@@ -1,0 +1,65 @@
+---
+title: "ROC analysis of a generic diagnostic test"
+output: html_notebook
+---
+
+In this notebook, we analyze sample data for a diagnostic test to determine the receiver operating characteristic (ROC).
+
+First, read in the data from the csv:
+
+```{r}
+df <- read.csv("raw_data_for_ROC.csv", header=TRUE)
+head(df)
+```
+Load the package "pROC":
+```{r}
+library(pROC)
+'citation("pROC")'
+```
+
+Build an roc object by calling the roc() function and passing the true outcome and the predictor as parameters.  In this case, that is the sample_status_code and the sensor reading, respectively.  We can also directly plot an ROC by directly calling plot.roc:
+```{r}
+my_roc_obj <- roc(df$sample_status_code, df$sensor)
+plot.roc(df$sample_status_code, df$sensor)
+```
+
+
+We get the area under the curve (AUC) as an indicator of the diagnostics overall predictive value (perfect classifier would yield an AUC = 1).  R integrates the area under the curve via the trapezoidal rule for estimating integrals.  To get the result, we call the function auc() and pass it the roc object and specify the parameter partial.auc = FALSE.
+
+```{r}
+auc(my_roc_obj, partial.auc=FALSE)
+```
+
+
+More plot options are available via ggplot2.  For this, we create a ggroc object.  We also define the line transparency (alpha), colour, and linetype (1 indicates solid linetype) and thickness of the line (size)
+
+
+```{r}
+library(ggplot2)
+g <- ggroc(my_roc_obj, alpha = 0.5, colour = "red", linetype = 1, size = 2)
+g
+```
+
+Finally, we will output the sensitivity and specificity values at the various signal thresholds.  We can choose the thresholds of interest by defining the list x specifically as follows:
+
+```{r}
+x <- c(500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900, 2000, 2100, 2200, 2300, 2400, 2500, 2600, 2700, 2800, 2900, 3000, 3100, 3200, 3300, 3400, 3500, 3600, 3700, 3800, 3900, 4000)
+mycoords = coords(my_roc_obj,x, input=c("threshold"), ret=c("threshold", "specificity", "sensitivity"),
+as.list=FALSE, drop=TRUE, best.method=c("youden", "closest.topleft"),
+best.weights=c(1, 0.5))
+print(mycords)
+```
+
+Alternatively, instead of specifying x, we can just specifiy "all" in our function call to return the sensitivity and specificity values for all of the default thresholds analyzed:
+
+```{r}
+mycoords2 = coords(my_roc_obj,"all", input=c("threshold"), ret=c("threshold", "specificity", "sensitivity"),
+as.list=FALSE, drop=TRUE, best.method=c("youden", "closest.topleft"),
+best.weights=c(1, 0.5))
+print(mycords2)
+```
+
+Finally, we write out the above data to a csv file:
+```{r}
+write.csv(mycords2, file = "ROC_analysis_data.csv")
+```
